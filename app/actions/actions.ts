@@ -1,165 +1,235 @@
-'use server'
+"use server";
 
-import { graphql } from "@/src/graphql"
-import { Project } from "@/src/graphql/graphql"
+import { graphql } from "@/src/graphql";
+import { Project } from "@/src/graphql/graphql";
 
-const getProjectByIdQuery = graphql(`
-  query GetProjectById {
-      project(id: "ccf86e90-e7be-4a98-95d4-f4f33390fda7"){
-        name
-        services {
-          edges {
-            node {
-              name
-            }
-          }
-        }
+const createDeploymentTriggerMutation = graphql(`
+  mutation createDeploymentTrigger {
+    deploymentTriggerCreate(
+      input: {
+        branch: "main"
+        environmentId: "make-this-random"
+        provider: "railway"
+        repository: "https://github.com/alphasecio/nodejs"
+        serviceId: "24db89b6-d5a9-438a-a214-54a20460a062"
+        projectId: "ccf86e90-e7be-4a98-95d4-f4f33390fda7"
       }
-    }
-`)
-
-const getAllProjectsQuery = graphql(`
-  query GetAllProjects {
-    projects(first: 100) {
-      edges {
-        node {
-          id
-          name
-          description
-        }
-      }
+    ) {
+      id
     }
   }
-`)
+`);
 
-const createServiceMutation = graphql(`
-  mutation createRandomService {
-  serviceCreate(
-    input: {
-      projectId: "ccf86e90-e7be-4a98-95d4-f4f33390fda7"
-      source: { repo: "railwayapp-templates/django" }
+const railwayToken = process.env.RAILWAY_API_TOKEN;
+
+export async function createDeployment() {
+  if (!railwayToken) {
+    return {
+      success: false,
+      error: "Server configuration error: API token missing.",
+    };
+  }
+  try {
+    const response = await fetch("https://backboard.railway.app/graphql/v2", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${railwayToken}`,
+      },
+      body: JSON.stringify({
+        query: `mutation createDeployment {
+          deploymentTrigger(
+            input: {
+              serviceId: "24db89b6-d5a9-438a-a214-54a20460a062"
+              projectId: "ccf86e90-e7be-4a98-95d4-f4f33390fda7"
+            }
+          ) {
+            id
+            status
+          }
+        }`,
+      }),
+      cache: "no-store",
+    });
+
+    const responseText = await response.text();
+
+    const result = JSON.parse(responseText);
+
+    if (result.errors) {
+      console.error("GraphQL API Errors:", result.errors);
+      return {
+        success: false,
+        error: `API Error: ${result.errors[0].message}`,
+      };
     }
-  ) {
-    id
+
+    const deployment = result.data.deploymentCreate;
+
+    console.log(
+      `Successfully created deployment for service ${deployment.service.name}.`
+    );
+    return { success: true, data: deployment };
+  } catch (error: any) {
+    console.error(
+      "A critical error occurred in the fetch block:",
+      error.message
+    );
+    return { success: false, error: "An unexpected error occurred." };
   }
 }
-`)
-
-const railwayToken = process.env.RAILWAY_API_TOKEN
 
 export async function getProjectById() {
   if (!railwayToken) {
-    return { success: false, error: "Server configuration error: API token missing." };
+    return {
+      success: false,
+      error: "Server configuration error: API token missing.",
+    };
   }
 
   try {
-    const response = await fetch('https://backboard.railway.app/graphql/v2', {
+    const response = await fetch("https://backboard.railway.app/graphql/v2", {
       method: "POST",
       headers: {
-        'Content-Type': "application/json",
-        'Authorization': `Bearer ${railwayToken}`
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${railwayToken}`,
       },
       body: JSON.stringify({
-        query: `query GetProjectById {
-          project(id: "ccf86e90-e7be-4a98-95d4-f4f33390fda7"){
-            name
-            services {
-              edges {
-                node {
-                  name
+        query: `
+          query GetProjectById {
+            project(id: "ccf86e90-e7be-4a98-95d4-f4f33390fda7") {
+              name
+              services {
+                edges {
+                  node {
+                    name
+                    deployments {
+                      edges{
+                        node {
+                          environment {
+                            name
+                          }
+                          environmentId
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
           }
-        }
-    `,
-      }),
+`      }),
       // cache: 'no-store',
     });
 
     const responseText = await response.text();
+    console.log('response text', responseText)
 
     const result = JSON.parse(responseText);
 
-    console.log("response", result)
-
     if (result.errors) {
       console.error("GraphQL API Errors:", result.errors);
-      return { success: false, error: `API Error: ${result.errors[0].message}` };
+      return {
+        success: false,
+        error: `API Error: ${result.errors[0].message}`,
+      };
     }
 
-    const project: Project = result.data.project
+    const project: Project = result.data.project;
+    console.log('final', project.services.edges[0].node.deployments.edges[0].node.environmentId)
 
     console.log(`Successfully fetched ${project} projects.`);
     return { success: true, data: project };
-
   } catch (error: any) {
-    console.error("A critical error occurred in the fetch block:", error.message);
+    console.error(
+      "A critical error occurred in the fetch block:",
+      error.message
+    );
     return { success: false, error: "An unexpected error occurred." };
   }
 }
 
-export async function createSampleService() {
+export async function createNewService() {
   if (!railwayToken) {
-    return { success: false, error: "Server configuration error: API token missing." };
+    return {
+      success: false,
+      error: "Server configuration error: API token missing.",
+    };
   }
 
   try {
-    const response = await fetch('https://backboard.railway.app/graphql/v2', {
+    const response = await fetch("https://backboard.railway.app/graphql/v2", {
       method: "POST",
       headers: {
-        'Content-Type': "application/json",
-        'Authorization': `Bearer ${railwayToken}`
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${railwayToken}`,
       },
       body: JSON.stringify({
-        query: `mutation createRandomService {
-        serviceCreate(
-          input: {
-            projectId: "ccf86e90-e7be-4a98-95d4-f4f33390fda7"
-            source: { repo: "railwayapp-templates/django" }
+        query: `mutation serviceCreate {
+          serviceCreate(
+            input: {
+              projectId: "ccf86e90-e7be-4a98-95d4-f4f33390fda7"
+              source: { repo: "railwayapp-templates/django" }
+            }
+          ) {
+            id
+            name
+            deployments {
+              edges {
+                node {
+                  environmentId
+                }
+              }
+            }
           }
-        ) {
-          id
-        }
-      }`,
+        }`,
       }),
-      cache: 'no-store',
+      cache: "no-store",
     });
 
     const responseText = await response.text();
 
     const result = JSON.parse(responseText);
 
-    console.log("response", result)
+    console.log("response", result);
 
     if (result.errors) {
       console.error("GraphQL API Errors:", result.errors);
-      return { success: false, error: `API Error: ${result.errors[0].message}` };
+      return {
+        success: false,
+        error: `API Error: ${result.errors[0].message}`,
+      };
     }
 
-    const projects: Project[] = result.data.projects.edges.map((edge: any) => edge.node);
+    const projects: Project[] = result.data.projects.edges.map(
+      (edge: any) => edge.node
+    );
 
     console.log(`Successfully fetched ${projects.length} projects.`);
     return { success: true, data: projects };
-
   } catch (error: any) {
-    console.error("A critical error occurred in the fetch block:", error.message);
+    console.error(
+      "A critical error occurred in the fetch block:",
+      error.message
+    );
     return { success: false, error: "An unexpected error occurred." };
   }
-
 }
 
 export async function getAllProjects() {
   if (!railwayToken) {
-    return { success: false, error: "Server configuration error: API token missing." };
+    return {
+      success: false,
+      error: "Server configuration error: API token missing.",
+    };
   }
 
   try {
-    const response = await fetch('https://backboard.railway.app/graphql/v2', {
+    const response = await fetch("https://backboard.railway.app/graphql/v2", {
       method: "POST",
       headers: {
-        'Content-Type': "application/json",
-        'Authorization': `Bearer ${railwayToken}`
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${railwayToken}`,
       },
       body: JSON.stringify({
         query: `query GetAllProjects {
@@ -174,7 +244,7 @@ export async function getAllProjects() {
         }
       }`,
       }),
-      cache: 'no-store',
+      cache: "no-store",
     });
 
     const responseText = await response.text();
@@ -183,16 +253,25 @@ export async function getAllProjects() {
 
     if (result.errors) {
       console.error("GraphQL API Errors:", result.errors);
-      return { success: false, error: `API Error: ${result.errors[0].message}` };
+      return {
+        success: false,
+        error: `API Error: ${result.errors[0].message}`,
+      };
     }
 
-    const projects: Project[] = result.data.projects.edges.map((edge: any) => edge.node);
+    const projects: Project[] = result.data.projects.edges.map(
+      (edge: any) => edge.node
+    );
 
     console.log(`Successfully fetched ${projects.length} projects.`);
     return { success: true, data: projects };
-
   } catch (error: any) {
-    console.error("A critical error occurred in the fetch block:", error.message);
+    console.error(
+      "A critical error occurred in the fetch block:",
+      error.message
+    );
     return { success: false, error: "An unexpected error occurred." };
   }
 }
+
+
