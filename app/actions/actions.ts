@@ -1,6 +1,7 @@
 'use server'
 
 import { graphql } from "@/src/graphql"
+import { Project } from "@/src/graphql/graphql"
 
 const getProjectById = graphql(`
   query GetProjectById {
@@ -27,9 +28,6 @@ const getAllProjectsQuery = graphql(`
 const railwayToken = process.env.RAILWAY_API_TOKEN
 
 export async function getAllProjects() {
-  console.log("--- Executing getAllProjects Server Action ---");
-  console.log("Using Token:", railwayToken ? `A token is set (length: ${railwayToken.length})` : "TOKEN IS UNDEFINED!");
-
   if (!railwayToken) {
     return { success: false, error: "Server configuration error: API token missing." };
   }
@@ -42,13 +40,22 @@ export async function getAllProjects() {
         'Authorization': `Bearer ${railwayToken}`
       },
       body: JSON.stringify({
-        query: getAllProjectsQuery,
+        query: `query GetAllProjects {
+          projects(first: 100) {
+            edges {
+              node {
+                id
+                name
+                description
+              }
+            }
+          }
+        }`,
       }),
       cache: 'no-store',
     });
 
     const responseText = await response.text();
-    console.log("Raw response from Railway API:", responseText);
 
     const result = JSON.parse(responseText);
 
@@ -57,7 +64,7 @@ export async function getAllProjects() {
       return { success: false, error: `API Error: ${result.errors[0].message}` };
     }
 
-    const projects = result.data.projects.edges.map((edge: any) => edge.node);
+    const projects: Project[] = result.data.projects.edges.map((edge: any) => edge.node);
 
     console.log(`Successfully fetched ${projects.length} projects.`);
     return { success: true, data: projects };
