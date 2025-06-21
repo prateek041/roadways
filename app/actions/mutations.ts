@@ -1,5 +1,13 @@
 import { graphql } from "@/src/graphql";
 
+const createNewProject = graphql(`
+mutation createProject {
+  projectCreate(input:{name: "test-project"}){
+    id
+  }
+}
+`)
+
 const createServiceMutation = graphql(`
   mutation serviceCreate {
     serviceCreate(

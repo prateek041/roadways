@@ -1,3 +1,6 @@
+'use client'
+
+import ProjectCreationDialog from "@/components/project-creation";
 import ProjectList from "@/components/project-list";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -12,7 +15,8 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-x-2">
           <div>
-            <Button><Plus />New</Button>
+            <ProjectCreationDialog />
+            {/* <Button><Plus />New</Button> */}
           </div>
           <div>
             <Link href={"/projects"}>

@@ -3,6 +3,57 @@
 import { graphql } from "@/src/graphql";
 import { Project } from "@/src/graphql/graphql";
 
+export async function createNewProject(name: string) {
+  if (!railwayToken) {
+    return {
+      success: false,
+      error: "Server configuration error: API token missing.",
+    };
+  }
+
+  try {
+    const response = await fetch("https://backboard.railway.app/graphql/v2", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${railwayToken}`,
+      },
+      body: JSON.stringify({
+        query: `
+         mutation createProject {
+  projectCreate(input:{name: "${name}"}){
+    id
+  }
+}`,
+      }),
+      cache: "no-store",
+    });
+
+    const responseText = await response.text();
+
+    const result = JSON.parse(responseText);
+
+    if (result.errors) {
+      console.error("GraphQL API Errors:", result.errors);
+      return {
+        success: false,
+        error: `API Error: ${result.errors[0].message}`,
+      };
+    }
+
+    const project: Project = result.data.projectCreate;
+
+    console.log(`Successfully created deployment for service ${project.id}.`);
+    return { success: true, data: project };
+  } catch (error: any) {
+    console.error(
+      "A critical error occurred in the fetch block:",
+      error.message
+    );
+    return { success: false, error: "An unexpected error occurred." };
+  }
+}
+
 const createDeploymentTriggerMutation = graphql(`
   mutation createDeploymentTrigger {
     deploymentTriggerCreate(
@@ -118,12 +169,13 @@ export async function getProjectById() {
               }
             }
           }
-`      }),
-      // cache: 'no-store',
+`,
+      }),
+      cache: "no-store",
     });
 
     const responseText = await response.text();
-    console.log('response text', responseText)
+    console.log("response text", responseText);
 
     const result = JSON.parse(responseText);
 
@@ -136,7 +188,10 @@ export async function getProjectById() {
     }
 
     const project: Project = result.data.project;
-    console.log('final', project.services.edges[0].node.deployments.edges[0].node.environmentId)
+    console.log(
+      "final",
+      project.services.edges[0].node.deployments.edges[0].node.environmentId
+    );
 
     console.log(`Successfully fetched ${project} projects.`);
     return { success: true, data: project };
@@ -273,5 +328,3 @@ export async function getAllProjects() {
     return { success: false, error: "An unexpected error occurred." };
   }
 }
-
-
