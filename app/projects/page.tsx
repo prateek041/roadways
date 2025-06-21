@@ -1,24 +1,26 @@
-'use client';
+"use client";
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ArrowBigLeftIcon } from "lucide-react";
 import Link from "next/link";
-import { createSampleService, getProjectById } from "../actions/actions";
+import {
+  createDeployment,
+  createNewService,
+  getProjectById,
+} from "../actions/actions";
 import React from "react";
-import { Project } from '@/src/graphql/graphql';
+import { Project } from "@/src/graphql/graphql";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function ProjectPage() {
-  const [project, setProject] = React.useState<Project | null>(null)
+  const [project, setProject] = React.useState<Project | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-
-
 
   React.useEffect(() => {
     const loadProjectData = async () => {
       const result = await getProjectById();
-
 
       if (result.success) {
         setProject(result.data as Project);
@@ -30,7 +32,7 @@ export default function ProjectPage() {
     };
 
     loadProjectData();
-  }, [])
+  }, []);
 
   // Render a loading state
   if (isLoading) {
@@ -42,8 +44,8 @@ export default function ProjectPage() {
     return <div>Error: {error}</div>;
   }
 
-  console.log('response', project)
 
+  console.log('final', project?.services.edges[0].node.deployments.edges[0].node.environmentId)
 
   return (
     <div className="h-screen">
@@ -57,15 +59,25 @@ export default function ProjectPage() {
 
       <div className="mt-20 h-full">
         <div>
-          {project?.name}
-          {project?.services.edges.map(item => (
-            <div>{item.node.name}</div>
+          <h1 className="text-xl font-semibold mb-2">{project?.name}</h1>
+          {project?.services.edges.map((item) => (
+            <div key={item.node.id}>
+              <Card>
+                <CardContent>
+                  {item.node.name}
+                  {item.node.deployments.edges.map((item) => (
+                    <div key={item.node.id}>{item.node.environmentId}</div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
           ))}
         </div>
         <div className="items-center justify-center flex h-full">
-          <Button onClick={createSampleService}>Trigger a service creation</Button>
+          <Button onClick={createNewService}>Trigger a service creation</Button>
+          <Button onClick={createDeployment}>Trigger a deployment</Button>
         </div>
       </div>
     </div>
-  )
+  );
 }
