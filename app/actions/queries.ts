@@ -1,31 +1,21 @@
-export const getProject = `query me {
-  me {
-    projects {
-      edges {
-        node {
-          id
-          name
-          services {
-            edges {
-              node {
-                id
-                name
-              }
-            }
-          }
-          plugins {
-            edges {
-              node {
-                id
-                name
-              }
-            }
-          }
-          environments {
-            edges {
-              node {
-                id
-                name
+import { graphql } from "@/src/graphql";
+
+const getProjectByIdQuery = graphql(`
+  query GetProjectById {
+    project(id: "ccf86e90-e7be-4a98-95d4-f4f33390fda7") {
+      name
+      services {
+        edges {
+          node {
+            name
+            deployments {
+              edges{
+                node {
+                  environment {
+                    name
+                  }
+                  environmentId
+                }
               }
             }
           }
@@ -33,4 +23,20 @@ export const getProject = `query me {
       }
     }
   }
-}`
+`);
+
+const getAllProjectsQuery = graphql(`
+  query GetAllProjects {
+    projects(first: 100) {
+      edges {
+        node {
+          id
+          name
+          description
+        }
+      }
+    }
+  }
+`);
+
+
