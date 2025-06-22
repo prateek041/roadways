@@ -3,7 +3,15 @@
 import { graphql } from "@/src/graphql";
 import { Project } from "@/src/graphql/graphql";
 
-export async function createNewProject(name: string) {
+export type Response<T> = {
+  success: boolean;
+  data?: T;
+  error?: string;
+};
+
+export async function createNewProject(
+  name: string
+): Promise<Response<Project>> {
   if (!railwayToken) {
     return {
       success: false,

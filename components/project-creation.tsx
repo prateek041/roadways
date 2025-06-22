@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Dialog,
   DialogContent,
@@ -9,9 +11,47 @@ import {
 import { Button } from "./ui/button";
 import { Plus } from "lucide-react";
 import { Input } from "./ui/input";
-import { createNewProject } from "@/app/actions/actions";
+import { createNewProject, Response } from "@/app/actions/actions";
+import { Project } from "@/src/graphql/graphql";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function ProjectCreationDialog() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const projectName = formData.get("project-name") as string;
+
+    if (!projectName) {
+      setError("Project name is required.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response: Response<Project> = await createNewProject(projectName);
+
+      if (response?.data?.id) {
+        router.push(`/projects/${response.data.id}`);
+      } else if (response?.error) {
+        setError(response.error);
+      } else {
+        setError("Unknown error occurred.");
+      }
+    } catch (err) {
+      setError("Failed to create project.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <Dialog>
       <DialogTrigger>
@@ -22,21 +62,9 @@ export default function ProjectCreationDialog() {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Are you absolutely sure?</DialogTitle>
+          <DialogTitle>Create a new project</DialogTitle>
           <DialogDescription>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                const projectName = formData.get("project-name") as string;
-                if (projectName) {
-                  console.log("Creating project:", projectName);
-                  createNewProject(projectName);
-                } else {
-                  console.error("Project name is required.");
-                }
-              }}
-            >
+            <form onSubmit={handleSubmit}>
               <div className="grid gap-4">
                 <label
                   htmlFor="project-name"
@@ -50,11 +78,16 @@ export default function ProjectCreationDialog() {
                   name="project-name"
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                   placeholder="Enter project name"
+                  disabled={loading}
+                  required
                 />
+                {error && (
+                  <div className="text-red-500 text-sm mt-2">{error}</div>
+                )}
               </div>
               <div className="mt-4">
-                <Button type="submit" className="w-full">
-                  Create Project
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Creating..." : "Create Project"}
                 </Button>
               </div>
             </form>

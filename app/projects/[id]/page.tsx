@@ -4,14 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ArrowBigLeftIcon } from "lucide-react";
 import Link from "next/link";
+
+import React from "react";
+import { Project } from "@/src/graphql/graphql";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   createDeployment,
   createNewService,
   getProjectById,
-} from "../actions/actions";
-import React from "react";
-import { Project } from "@/src/graphql/graphql";
-import { Card, CardContent } from "@/components/ui/card";
+} from "@/app/actions/actions";
 
 export default function ProjectPage() {
   const [project, setProject] = React.useState<Project | null>(null);
@@ -44,8 +45,10 @@ export default function ProjectPage() {
     return <div>Error: {error}</div>;
   }
 
-
-  console.log('final', project?.services.edges[0].node.deployments.edges[0].node.environmentId)
+  console.log(
+    "final",
+    project?.services.edges[0].node.deployments.edges[0].node.environmentId
+  );
 
   return (
     <div className="h-screen">
