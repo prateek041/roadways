@@ -1,6 +1,5 @@
 "use server";
 
-import { graphql } from "@/src/graphql";
 import { Project } from "@/src/graphql/graphql";
 
 export type Response<T> = {
@@ -62,26 +61,17 @@ export async function createNewProject(
   }
 }
 
-const createDeploymentTriggerMutation = graphql(`
-  mutation createDeploymentTrigger {
-    deploymentTriggerCreate(
-      input: {
-        branch: "main"
-        environmentId: "make-this-random"
-        provider: "railway"
-        repository: "https://github.com/alphasecio/nodejs"
-        serviceId: "24db89b6-d5a9-438a-a214-54a20460a062"
-        projectId: "ccf86e90-e7be-4a98-95d4-f4f33390fda7"
-      }
-    ) {
-      id
-    }
-  }
-`);
-
 const railwayToken = process.env.RAILWAY_API_TOKEN;
 
-export async function createDeployment() {
+export async function createDeployment(
+  projectId: string,
+  serviceId: string,
+  environmentId: string
+) {
+  const templateId = "89d35db4-3f3d-4317-aa47-ad53ccbbf587";
+  console.log(
+    `Creating deployment for service ${serviceId} in project ${projectId} and environment ${environmentId}.`
+  );
   if (!railwayToken) {
     return {
       success: false,
@@ -96,17 +86,20 @@ export async function createDeployment() {
         Authorization: `Bearer ${railwayToken}`,
       },
       body: JSON.stringify({
-        query: `mutation createDeployment {
-          deploymentTrigger(
-            input: {
-              serviceId: "24db89b6-d5a9-438a-a214-54a20460a062"
-              projectId: "ccf86e90-e7be-4a98-95d4-f4f33390fda7"
-            }
-          ) {
-            id
-            status
-          }
-        }`,
+        query: `mutation createDeploymentTrigger {
+      deploymentTriggerCreate(
+        input: {
+          branch: "main"
+          environmentId: "${environmentId}"
+          provider: "railway"
+          repository: "alphasecio/nodejs"
+          serviceId: "${serviceId}"
+          projectId: "${projectId}"
+        }
+      ) {
+        id
+      }
+    }`,
       }),
       cache: "no-store",
     });
@@ -114,6 +107,8 @@ export async function createDeployment() {
     const responseText = await response.text();
 
     const result = JSON.parse(responseText);
+
+    console.log("response", result);
 
     if (result.errors) {
       console.error("GraphQL API Errors:", result.errors);
@@ -123,7 +118,7 @@ export async function createDeployment() {
       };
     }
 
-    const deployment = result.data.deploymentCreate;
+    const deployment = result.data.deploymentTriggerCreate;
 
     console.log(
       `Successfully created deployment for service ${deployment.service.name}.`
@@ -155,28 +150,27 @@ export async function getProjectById(id: string) {
       },
       body: JSON.stringify({
         query: `
-          query GetProjectById {
-            project(id: "${id}") {
-              name
-              services {
-                edges {
-                  node {
-                    name
-                    deployments {
-                      edges{
-                        node {
-                          environment {
-                            name
-                          }
-                          environmentId
-                        }
-                      }
-                    }
-                  }
-                }
+          query getProject {
+        project(id:"${id}") {
+          name
+          services {
+            edges {
+              node {
+                id
+                name
               }
             }
           }
+          environments {
+            edges {
+              node {
+                name
+                id
+              }
+            }
+          }
+        }
+      }
 `,
       }),
       cache: "no-store",
@@ -207,7 +201,62 @@ export async function getProjectById(id: string) {
   }
 }
 
-export async function createNewService() {
+async function getProjectDefaultEnvironmentId(
+  projectId: string,
+  token: string
+): Promise<string | undefined> {
+  const response = await fetch("https://backboard.railway.app/graphql/v2", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      query: `
+        query getProjectEnvironments($projectId: String!) {
+          project(id: $projectId) {
+            environments {
+              edges {
+                node {
+                  id
+                  name
+                }
+              }
+            }
+          }
+        }
+      `,
+      variables: {
+        projectId: projectId,
+      },
+    }),
+    cache: "no-store",
+  });
+
+  const result = await response.json();
+
+  console.log("result", result);
+
+  if (result.errors) {
+    console.error("GraphQL Errors (Get Project Environments):", result.errors);
+    return undefined;
+  }
+
+  const defaultEnv = result.data.project.environments.edges.find(
+    (edge: any) => edge.node.isDefault
+  )?.node.id;
+
+  if (!defaultEnv) {
+    console.warn(
+      `No default environment found for project ${projectId}. You might need to specify one manually.`
+    );
+  }
+  return defaultEnv;
+}
+
+export async function createNewService(projectId: string) {
+  const templateCode = "Abo1zu";
+
   if (!railwayToken) {
     return {
       success: false,
@@ -216,55 +265,132 @@ export async function createNewService() {
   }
 
   try {
-    const response = await fetch("https://backboard.railway.app/graphql/v2", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${railwayToken}`,
-      },
-      body: JSON.stringify({
-        query: `mutation serviceCreate {
-          serviceCreate(
-            input: {
-              projectId: "ccf86e90-e7be-4a98-95d4-f4f33390fda7"
-              source: { repo: "railwayapp-templates/django" }
-            }
-          ) {
-            id
-            name
-            deployments {
-              edges {
-                node {
-                  environmentId
-                }
+    const templateResponse = await fetch(
+      "https://backboard.railway.app/graphql/v2",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${railwayToken}`,
+        },
+        body: JSON.stringify({
+          query: `
+            query getTemplate($code: String!) {
+              template(code: $code) {
+                id # Crucial for templateId in mutation
+                name
+                description
+                image
+                category
+                serializedConfig # Crucial for serializedConfig in mutation
               }
             }
-          }
-        }`,
-      }),
-      cache: "no-store",
-    });
+          `,
+          variables: {
+            code: templateCode,
+          },
+        }),
+        cache: "no-store",
+      }
+    );
 
-    const responseText = await response.text();
+    let templateResult = await templateResponse.json();
 
-    const result = JSON.parse(responseText);
+    console.log(
+      "Template Result Data:",
+      JSON.stringify(templateResult.data, null, 2)
+    );
 
-    console.log("response", result);
-
-    if (result.errors) {
-      console.error("GraphQL API Errors:", result.errors);
+    if (templateResult.errors) {
+      console.error("GraphQL Errors (Template Query):", templateResult.errors);
       return {
         success: false,
-        error: `API Error: ${result.errors[0].message}`,
+        error:
+          templateResult.errors[0]?.message ||
+          "Failed to fetch template configuration.",
       };
     }
 
-    const projects: Project[] = result.data.projects.edges.map(
-      (edge: any) => edge.node
+    const fetchedSerializedConfig =
+      templateResult.data.template.serializedConfig;
+    const templateIdForMutation = templateResult.data.template.id;
+
+    if (!fetchedSerializedConfig) {
+      return {
+        success: false,
+        error: "Serialized configuration not found for the template.",
+      };
+    }
+    if (!templateIdForMutation) {
+      return {
+        success: false,
+        error: "Template ID not found from the template query. Cannot deploy.",
+      };
+    }
+
+    console.log(
+      "Fetched Serialized Config:",
+      JSON.stringify(fetchedSerializedConfig, null, 2)
     );
 
-    console.log(`Successfully fetched ${projects.length} projects.`);
-    return { success: true, data: projects };
+    console.log("Template ID for Mutation:", templateIdForMutation);
+
+    console.log(
+      "Fetched Serialized Config:",
+      JSON.stringify(fetchedSerializedConfig, null, 2)
+    );
+
+    const environmentId = "0b6e7aa7-b15f-416b-a80b-b01e0bb9c7a0";
+    console.log("Project ID:", projectId);
+    console.log("Environment ID:", environmentId);
+    console.log("Template ID for Mutation:", templateIdForMutation);
+
+    const deployResponse = await fetch(
+      "https://backboard.railway.app/graphql/v2",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${railwayToken}`,
+        },
+        body: JSON.stringify({
+          query: `
+            mutation templateDeployV2($input: TemplateDeployV2Input!)
+            {
+              templateDeployV2(input: $input)
+                {projectId
+                workflowId
+            }}
+          `,
+          variables: {
+            input: {
+              projectId: projectId,
+              environmentId: environmentId,
+              serializedConfig: fetchedSerializedConfig,
+              templateId: templateIdForMutation,
+              teamId: "f624be30-deeb-45d2-a66c-47617b5636e2",
+            },
+          },
+        }),
+        cache: "no-store",
+      }
+    );
+
+    let deployResult = await deployResponse.json();
+    console.log("Final Deploy Result:", JSON.stringify(deployResult, null, 2));
+
+    if (deployResult.errors) {
+      console.error(
+        "GraphQL Errors (Deployment Mutation):",
+        deployResult.errors
+      );
+      return {
+        success: false,
+        error: deployResult.errors[0]?.message || "Failed to deploy template.",
+      };
+    }
+
+    return { success: true, data: deployResult.data.templateDeployV2 };
   } catch (error: any) {
     console.error(
       "A critical error occurred in the fetch block:",

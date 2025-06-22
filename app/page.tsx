@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import ProjectCreationDialog from "@/components/project-creation";
 import ProjectList from "@/components/project-list";
@@ -10,7 +10,7 @@ export default function Home() {
   return (
     <div className="h-full mt-20">
       <div className="flex justify-between">
-        <div >
+        <div>
           <h1>Get your projects ready</h1>
         </div>
         <div className="flex items-center gap-x-2">
