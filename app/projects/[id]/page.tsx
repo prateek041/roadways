@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ArrowBigLeftIcon } from "lucide-react";
 import Link from "next/link";
-
+import { useParams } from "next/navigation";
 import React from "react";
 import { Project } from "@/src/graphql/graphql";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,13 +15,23 @@ import {
 } from "@/app/actions/actions";
 
 export default function ProjectPage() {
+  const params = useParams();
+  const projectId = params?.id as string | undefined;
+
   const [project, setProject] = React.useState<Project | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
+    if (!projectId) {
+      setError("No project ID found in URL.");
+      setIsLoading(false);
+      return;
+    }
+
     const loadProjectData = async () => {
-      const result = await getProjectById();
+      const result = await getProjectById(projectId);
+      console.log("result", result);
 
       if (result.success) {
         setProject(result.data as Project);
@@ -33,7 +43,7 @@ export default function ProjectPage() {
     };
 
     loadProjectData();
-  }, []);
+  }, [projectId]);
 
   // Render a loading state
   if (isLoading) {
@@ -44,11 +54,6 @@ export default function ProjectPage() {
   if (error) {
     return <div>Error: {error}</div>;
   }
-
-  console.log(
-    "final",
-    project?.services.edges[0].node.deployments.edges[0].node.environmentId
-  );
 
   return (
     <div className="h-screen">

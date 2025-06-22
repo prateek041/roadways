@@ -138,7 +138,7 @@ export async function createDeployment() {
   }
 }
 
-export async function getProjectById() {
+export async function getProjectById(id: string) {
   if (!railwayToken) {
     return {
       success: false,
@@ -156,7 +156,7 @@ export async function getProjectById() {
       body: JSON.stringify({
         query: `
           query GetProjectById {
-            project(id: "ccf86e90-e7be-4a98-95d4-f4f33390fda7") {
+            project(id: "${id}") {
               name
               services {
                 edges {
@@ -183,10 +183,10 @@ export async function getProjectById() {
     });
 
     const responseText = await response.text();
-    console.log("response text", responseText);
 
     const result = JSON.parse(responseText);
 
+    console.log("result", result);
     if (result.errors) {
       console.error("GraphQL API Errors:", result.errors);
       return {
@@ -196,11 +196,6 @@ export async function getProjectById() {
     }
 
     const project: Project = result.data.project;
-    console.log(
-      "final",
-      project.services.edges[0].node.deployments.edges[0].node.environmentId
-    );
-
     console.log(`Successfully fetched ${project} projects.`);
     return { success: true, data: project };
   } catch (error: any) {
