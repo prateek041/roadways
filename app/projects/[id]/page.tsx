@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowBigLeftIcon, ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import React from "react";
@@ -65,16 +65,7 @@ export default function ProjectPage() {
   const handleCreateNewService = async () => {
     if (!projectId) return;
     const response = await createNewService(projectId);
-    console.log("Service creation response:", response);
     await fetchProject(); // Refresh the project data after creating a new service
-  };
-
-  console.log("Selected Environment ID:", selectedEnvId);
-
-  // Handler for creating a deployment
-  const handleCreateDeployment = async () => {
-    if (!projectId || !serviceId || !selectedEnvId) return;
-    await createDeployment(projectId, serviceId, selectedEnvId);
   };
 
   const handleDeleteService = async (serviceId: string) => {
@@ -98,8 +89,6 @@ export default function ProjectPage() {
   if (error) {
     return <div>Error: {error}</div>;
   }
-
-  console.log("Project data:", project);
 
   return (
     <div className="h-screen">
