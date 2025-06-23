@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ArrowBigLeftIcon } from "lucide-react";
+import { ArrowBigLeftIcon, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import React from "react";
@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   createDeployment,
   createNewService,
+  deleteService,
   getProjectById,
 } from "@/app/actions/actions";
 import {
@@ -68,10 +69,24 @@ export default function ProjectPage() {
     await fetchProject(); // Refresh the project data after creating a new service
   };
 
+  console.log("Selected Environment ID:", selectedEnvId);
+
   // Handler for creating a deployment
   const handleCreateDeployment = async () => {
     if (!projectId || !serviceId || !selectedEnvId) return;
     await createDeployment(projectId, serviceId, selectedEnvId);
+  };
+
+  const handleDeleteService = async (serviceId: string) => {
+    if (!projectId) return;
+    const response = await deleteService(selectedEnvId as string, serviceId);
+    console.log("Delete service response:", response);
+    if (!response.success) {
+      console.error("Failed to delete service:", response.error);
+      return;
+    }
+    console.log("Delete service with ID:", serviceId);
+    await fetchProject();
   };
 
   // Render a loading state
@@ -89,8 +104,8 @@ export default function ProjectPage() {
   return (
     <div className="h-screen">
       <Link href={"/"}>
-        <div className="flex items-center gap-x-5">
-          <ArrowBigLeftIcon />
+        <div className="flex items-center">
+          <ChevronLeft className="h-5 w-5" />
           Go back
         </div>
       </Link>
@@ -119,39 +134,38 @@ export default function ProjectPage() {
             </div>
             <Button onClick={handleCreateNewService}>Create New Service</Button>
           </div>
-          {project?.services.edges.map((item) => (
-            <div key={item.node.id}>
-              <Card>
-                <CardContent>
-                  <div className="flex flex-col">
-                    <h1 className="font-semibold">{item.node.name}</h1>
-                    <h2>{item.node.id}</h2>
-                  </div>
-                  {item.node.deployments ? (
-                    <div className="mt-2">
-                      <h2 className="text-sm font-medium">Service ID:</h2>
-                      <p className="text-sm">{item.node.id}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {project?.services.edges.map((item) => (
+              <div key={item.node.id}>
+                <Card>
+                  <CardContent>
+                    <div className="flex flex-col">
+                      <h1 className="font-semibold">{item.node.name}</h1>
+                      <h2>{item.node.id}</h2>
                     </div>
-                  ) : (
-                    <div className="mt-2 justify-self-end">
-                      <Button
-                        variant={"outline"}
-                        onClick={handleCreateDeployment}
-                        disabled={!selectedEnvId}
-                      >
-                        Trigger a deployment
-                      </Button>
+                    <div className="flex flex-col mt-4">
+                      {item.node.deployments ? (
+                        <div className="mt-2">
+                          <h2 className="text-sm font-medium">Service ID:</h2>
+                          <p className="text-sm">{item.node.id}</p>
+                        </div>
+                      ) : (
+                        <div>
+                          <Button
+                            variant={"outline"}
+                            onClick={() => handleDeleteService(item.node.id)}
+                            disabled={!selectedEnvId}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          ))}
-        </div>
-        <div className="items-center justify-center flex h-full">
-          <Button onClick={handleCreateNewService}>
-            Trigger a service creation
-          </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

@@ -8,6 +8,56 @@ export type Response<T> = {
   error?: string;
 };
 
+export async function deleteService(
+  environmentId: string,
+  serviceId: string
+): Promise<Response<void>> {
+  if (!railwayToken) {
+    return {
+      success: false,
+      error: "Server configuration error: API token missing.",
+    };
+  }
+  try {
+    const response = await fetch("https://backboard.railway.app/graphql/v2", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${railwayToken}`,
+      },
+      body: JSON.stringify({
+        query: `
+          mutation delete {
+            serviceDelete(environmentId:"${environmentId}", id:"${serviceId}")
+          }
+        `,
+      }),
+      cache: "no-store",
+    });
+
+    const responseText = await response.text();
+
+    const result = JSON.parse(responseText);
+
+    if (result.errors) {
+      console.error("GraphQL API Errors:", result.errors);
+      return {
+        success: false,
+        error: `API Error: ${result.errors[0].message}`,
+      };
+    }
+
+    console.log(`Successfully deleted service ${serviceId}.`);
+    return { success: true };
+  } catch (error: any) {
+    console.error(
+      "A critical error occurred in the fetch block:",
+      error.message
+    );
+    return { success: false, error: "An unexpected error occurred." };
+  }
+}
+
 export async function createNewProject(
   name: string
 ): Promise<Response<Project>> {

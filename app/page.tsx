@@ -16,7 +16,6 @@ export default function Home() {
         <div className="flex items-center gap-x-2">
           <div>
             <ProjectCreationDialog />
-            {/* <Button><Plus />New</Button> */}
           </div>
           <div>
             <Link href={"/projects"}>
