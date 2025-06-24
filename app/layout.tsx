@@ -35,7 +35,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="container mx-auto">
+          <div className="container h-full mx-auto">
             <Navbar />
             {children}
           </div>
