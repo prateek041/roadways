@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react';
-import { Project } from '@/src/graphql/graphql';
-import { getAllProjects } from '@/app/actions/actions';
+import { useEffect, useState } from "react";
+import { Project } from "@/src/graphql/graphql";
+import { getAllProjects } from "@/app/actions/actions";
 
 export default function ProjectList() {
   const [projects, setProjects] = useState<Project[] | null>(null);
@@ -35,9 +35,8 @@ export default function ProjectList() {
     return <div>Error: {error}</div>;
   }
 
-  console.log('response', projects)
+  console.log("response", projects);
 
-  // Render the data on success
   return (
     <div>
       <h1>Project Details</h1>
@@ -48,10 +47,8 @@ export default function ProjectList() {
 
           <h3>Services:</h3>
           <ul>
-            {projects.map(edge => (
-              <li key={edge.id}>
-                {edge.name}
-              </li>
+            {projects.map((edge) => (
+              <li key={edge.id}>{edge.name}</li>
             ))}
           </ul>
         </div>

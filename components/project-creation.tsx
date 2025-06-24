@@ -16,7 +16,9 @@ import { Project } from "@/src/graphql/graphql";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function ProjectCreationDialog() {
+export default function ProjectCreationDialog(
+  children: React.PropsWithChildren
+) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
