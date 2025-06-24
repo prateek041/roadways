@@ -1,15 +1,16 @@
 /* eslint-disable */
-import { ResultOf, DocumentTypeDecoration } from '@graphql-typed-document-node/core';
-import { Incremental, TypedDocumentString } from './graphql';
+import {
+  ResultOf,
+  DocumentTypeDecoration,
+} from "@graphql-typed-document-node/core";
+import { Incremental } from "./graphql";
 
-
-export type FragmentType<TDocumentType extends DocumentTypeDecoration<any, any>> = TDocumentType extends DocumentTypeDecoration<
-  infer TType,
-  any
->
-  ? [TType] extends [{ ' $fragmentName'?: infer TKey }]
+export type FragmentType<
+  TDocumentType extends DocumentTypeDecoration<any, any>
+> = TDocumentType extends DocumentTypeDecoration<infer TType, any>
+  ? [TType] extends [{ " $fragmentName"?: infer TKey }]
     ? TKey extends string
-      ? { ' $fragmentRefs'?: { [key in TKey]: TType } }
+      ? { " $fragmentRefs"?: { [key in TKey]: TType } }
       : never
     : never
   : never;
@@ -32,7 +33,10 @@ export function useFragment<TType>(
 // return nullable if `fragmentType` is nullable or undefined
 export function useFragment<TType>(
   _documentNode: DocumentTypeDecoration<TType, any>,
-  fragmentType: FragmentType<DocumentTypeDecoration<TType, any>> | null | undefined
+  fragmentType:
+    | FragmentType<DocumentTypeDecoration<TType, any>>
+    | null
+    | undefined
 ): TType | null | undefined;
 // return array of non-nullable if `fragmentType` is array of non-nullable
 export function useFragment<TType>(
@@ -42,7 +46,10 @@ export function useFragment<TType>(
 // return array of nullable if `fragmentType` is array of nullable
 export function useFragment<TType>(
   _documentNode: DocumentTypeDecoration<TType, any>,
-  fragmentType: Array<FragmentType<DocumentTypeDecoration<TType, any>>> | null | undefined
+  fragmentType:
+    | Array<FragmentType<DocumentTypeDecoration<TType, any>>>
+    | null
+    | undefined
 ): Array<TType> | null | undefined;
 // return readonly array of non-nullable if `fragmentType` is array of non-nullable
 export function useFragment<TType>(
@@ -52,15 +59,22 @@ export function useFragment<TType>(
 // return readonly array of nullable if `fragmentType` is array of nullable
 export function useFragment<TType>(
   _documentNode: DocumentTypeDecoration<TType, any>,
-  fragmentType: ReadonlyArray<FragmentType<DocumentTypeDecoration<TType, any>>> | null | undefined
+  fragmentType:
+    | ReadonlyArray<FragmentType<DocumentTypeDecoration<TType, any>>>
+    | null
+    | undefined
 ): ReadonlyArray<TType> | null | undefined;
 export function useFragment<TType>(
   _documentNode: DocumentTypeDecoration<TType, any>,
-  fragmentType: FragmentType<DocumentTypeDecoration<TType, any>> | Array<FragmentType<DocumentTypeDecoration<TType, any>>> | ReadonlyArray<FragmentType<DocumentTypeDecoration<TType, any>>> | null | undefined
+  fragmentType:
+    | FragmentType<DocumentTypeDecoration<TType, any>>
+    | Array<FragmentType<DocumentTypeDecoration<TType, any>>>
+    | ReadonlyArray<FragmentType<DocumentTypeDecoration<TType, any>>>
+    | null
+    | undefined
 ): TType | Array<TType> | ReadonlyArray<TType> | null | undefined {
   return fragmentType as any;
 }
-
 
 export function makeFragmentData<
   F extends DocumentTypeDecoration<any, any>,
@@ -68,16 +82,22 @@ export function makeFragmentData<
 >(data: FT, _fragment: F): FragmentType<F> {
   return data as FragmentType<F>;
 }
-export function isFragmentReady<TQuery, TFrag>(
-  queryNode: TypedDocumentString<TQuery, any>,
-  fragmentNode: TypedDocumentString<TFrag, any>,
-  data: FragmentType<TypedDocumentString<Incremental<TFrag>, any>> | null | undefined
-): data is FragmentType<typeof fragmentNode> {
-  const deferredFields = queryNode.__meta__?.deferredFields as Record<string, (keyof TFrag)[]>;
-  const fragName = fragmentNode.__meta__?.fragmentName as string | undefined;
+// export function isFragmentReady<TQuery, TFrag>(
+//   queryNode: TypedDocumentString<TQuery, any>,
+//   fragmentNode: TypedDocumentString<TFrag, any>,
+//   data:
+//     | FragmentType<TypedDocumentString<Incremental<TFrag>, any>>
+//     | null
+//     | undefined
+// ): data is FragmentType<typeof fragmentNode> {
+//   const deferredFields = queryNode.__meta__?.deferredFields as Record<
+//     string,
+//     (keyof TFrag)[]
+//   >;
+//   const fragName = fragmentNode.__meta__?.fragmentName as string | undefined;
 
-  if (!deferredFields || !fragName) return true;
+//   if (!deferredFields || !fragName) return true;
 
-  const fields = deferredFields[fragName] ?? [];
-  return fields.length > 0 && fields.every(field => data && field in data);
-}
+//   const fields = deferredFields[fragName] ?? [];
+//   return fields.length > 0 && fields.every((field) => data && field in data);
+// }
