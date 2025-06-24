@@ -8,6 +8,121 @@ export type Response<T> = {
   error?: string;
 };
 
+export async function deleteProject(id: string) {
+  if (!process.env.RAILWAY_API_TOKEN) {
+    return {
+      success: false,
+      error: "Server configuration error: API token missing.",
+    };
+  }
+
+  try {
+    const response = await fetch("https://backboard.railway.app/graphql/v2", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.RAILWAY_API_TOKEN}`,
+      },
+      body: JSON.stringify({
+        query: `
+          mutation deleteProject {
+            projectDelete(id:"${id}")
+          }
+        `,
+      }),
+      cache: "no-store",
+    });
+
+    const responseText = await response.text();
+    const result = JSON.parse(responseText);
+
+    if (result.errors) {
+      console.error("GraphQL API Errors:", result.errors);
+      return {
+        success: false,
+        error: `API Error: ${result.errors[0].message}`,
+      };
+    }
+
+    console.log(`Successfully deleted project ${id}.`);
+    return { success: true };
+  } catch (error: any) {
+    console.error(
+      "A critical error occurred in the fetch block:",
+      error.message
+    );
+    return { success: false, error: "An unexpected error occurred." };
+  }
+}
+
+export async function getMe() {
+  if (!process.env.RAILWAY_API_TOKEN) {
+    return {
+      success: false,
+      error: "Server configuration error: API token missing.",
+    };
+  }
+
+  try {
+    const response = await fetch("https://backboard.railway.app/graphql/v2", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.RAILWAY_API_TOKEN}`,
+      },
+      body: JSON.stringify({
+        query: `
+          query me {
+  me{
+    id
+    workspaces {
+      id
+      team{
+        projects{
+          edges{
+            node{
+              id
+              name
+              services {
+                edges {
+                  node{
+                    id
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+        `,
+      }),
+      cache: "no-store",
+    });
+
+    const responseText = await response.text();
+    const result = JSON.parse(responseText);
+
+    if (result.errors) {
+      console.error("GraphQL API Errors:", result.errors);
+      return {
+        success: false,
+        error: `API Error: ${result.errors[0].message}`,
+      };
+    }
+
+    return { success: true, data: result.data.me };
+  } catch (error: any) {
+    console.error(
+      "A critical error occurred in the fetch block:",
+      error.message
+    );
+    return { success: false, error: "An unexpected error occurred." };
+  }
+}
+
 export async function deleteService(
   environmentId: string,
   serviceId: string
