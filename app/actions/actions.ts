@@ -304,7 +304,10 @@ async function getProjectDefaultEnvironmentId(
   return defaultEnv;
 }
 
-export async function createNewService(projectId: string) {
+export async function createNewService(
+  projectId: string,
+  environmentId: string
+) {
   const templateCode = "Abo1zu";
 
   if (!railwayToken) {
@@ -327,12 +330,12 @@ export async function createNewService(projectId: string) {
           query: `
             query getTemplate($code: String!) {
               template(code: $code) {
-                id # Crucial for templateId in mutation
+                id
                 name
                 description
                 image
                 category
-                serializedConfig # Crucial for serializedConfig in mutation
+                serializedConfig
               }
             }
           `,
@@ -390,10 +393,47 @@ export async function createNewService(projectId: string) {
       JSON.stringify(fetchedSerializedConfig, null, 2)
     );
 
-    const environmentId = "0b6e7aa7-b15f-416b-a80b-b01e0bb9c7a0";
     console.log("Project ID:", projectId);
-    console.log("Environment ID:", environmentId);
     console.log("Template ID for Mutation:", templateIdForMutation);
+
+    const serviceCreateResponse = await fetch(
+      "https://backboard.railway.app/graphql/v2",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${railwayToken}`,
+        },
+        body: JSON.stringify({
+          query: `
+            mutation serviceCreate {
+  serviceCreate(input:{projectId: "fd05c667-db43-466f-a3be-17777e5b6e8e"
+    source: { repo: "railwayapp-templates/nodejs" }}){
+    id
+    name
+    deployments {
+      edges {
+        node {
+          environmentId
+        }
+      }
+    }
+  }
+}
+          `,
+          variables: {
+            projectId: projectId,
+          },
+        }),
+        cache: "no-store",
+      }
+    );
+
+    let serviceCreateResult = await serviceCreateResponse.json();
+    console.log(
+      "Service Create Result Data:",
+      JSON.stringify(serviceCreateResult.data, null, 2)
+    );
 
     const deployResponse = await fetch(
       "https://backboard.railway.app/graphql/v2",
@@ -418,7 +458,6 @@ export async function createNewService(projectId: string) {
               environmentId: environmentId,
               serializedConfig: fetchedSerializedConfig,
               templateId: templateIdForMutation,
-              teamId: "f624be30-deeb-45d2-a66c-47617b5636e2",
             },
           },
         }),

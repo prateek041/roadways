@@ -3,7 +3,6 @@
 import ProjectCreationDialog from "@/components/project-creation";
 import ProjectList from "@/components/project-list";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 import Link from "next/link";
 
 export default function Home() {

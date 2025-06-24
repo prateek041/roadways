@@ -64,7 +64,7 @@ export default function ProjectPage() {
   // Handler for creating a new service and refreshing the project data
   const handleCreateNewService = async () => {
     if (!projectId) return;
-    const response = await createNewService(projectId);
+    await createNewService(projectId, selectedEnvId as string);
     await fetchProject(); // Refresh the project data after creating a new service
   };
 
