@@ -9,7 +9,6 @@ import React from "react";
 import { Project } from "@/src/graphql/graphql";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  createDeployment,
   createNewService,
   deleteService,
   getProjectById,
