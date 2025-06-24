@@ -8,44 +8,34 @@ export type Response<T> = {
   error?: string;
 };
 
-const RAILWAY_API_URL = "https://backboard.railway.app/graphql/v2";
-const railwayToken = process.env.RAILWAY_API_TOKEN;
-
-async function fetchGraphQL<T = any>(
-  query: string,
-  variables?: Record<string, any>
-): Promise<any> {
-  const response = await fetch(RAILWAY_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${railwayToken}`,
-    },
-    body: JSON.stringify({ query, variables }),
-    cache: "no-store",
-  });
-  const text = await response.text();
-  try {
-    return JSON.parse(text);
-  } catch (e) {
-    throw new Error("Failed to parse GraphQL response: " + text);
-  }
-}
-
 export async function deleteProject(id: string) {
-  if (!railwayToken) {
+  if (!process.env.RAILWAY_API_TOKEN) {
     return {
       success: false,
       error: "Server configuration error: API token missing.",
     };
   }
+
   try {
-    const query = `
-      mutation deleteProject($id: String!) {
-        projectDelete(id: $id)
-      }
-    `;
-    const result = await fetchGraphQL(query, { id });
+    const response = await fetch("https://backboard.railway.app/graphql/v2", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.RAILWAY_API_TOKEN}`,
+      },
+      body: JSON.stringify({
+        query: `
+          mutation deleteProject {
+            projectDelete(id:"${id}")
+          }
+        `,
+      }),
+      cache: "no-store",
+    });
+
+    const responseText = await response.text();
+    const result = JSON.parse(responseText);
+
     if (result.errors) {
       console.error("GraphQL API Errors:", result.errors);
       return {
@@ -53,6 +43,7 @@ export async function deleteProject(id: string) {
         error: `API Error: ${result.errors[0].message}`,
       };
     }
+
     console.log(`Successfully deleted project ${id}.`);
     return { success: true };
   } catch (error: any) {
@@ -65,32 +56,37 @@ export async function deleteProject(id: string) {
 }
 
 export async function getMe() {
-  if (!railwayToken) {
+  if (!process.env.RAILWAY_API_TOKEN) {
     return {
       success: false,
       error: "Server configuration error: API token missing.",
     };
   }
+
   try {
-    const query = `
-      query me {
-        me {
-          id
-          workspaces {
-            id
-            team {
-              projects {
+    const response = await fetch("https://backboard.railway.app/graphql/v2", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.RAILWAY_API_TOKEN}`,
+      },
+      body: JSON.stringify({
+        query: `
+          query me {
+  me{
+    id
+    workspaces {
+      id
+      team{
+        projects{
+          edges{
+            node{
+              id
+              name
+              services {
                 edges {
-                  node {
+                  node{
                     id
-                    name
-                    services {
-                      edges {
-                        node {
-                          id
-                        }
-                      }
-                    }
                   }
                 }
               }
@@ -98,8 +94,17 @@ export async function getMe() {
           }
         }
       }
-    `;
-    const result = await fetchGraphQL(query);
+    }
+  }
+}
+        `,
+      }),
+      cache: "no-store",
+    });
+
+    const responseText = await response.text();
+    const result = JSON.parse(responseText);
+
     if (result.errors) {
       console.error("GraphQL API Errors:", result.errors);
       return {
@@ -107,6 +112,7 @@ export async function getMe() {
         error: `API Error: ${result.errors[0].message}`,
       };
     }
+
     return { success: true, data: result.data.me };
   } catch (error: any) {
     console.error(
@@ -128,12 +134,26 @@ export async function deleteService(
     };
   }
   try {
-    const query = `
-      mutation deleteService($environmentId: String!, $serviceId: String!) {
-        serviceDelete(environmentId: $environmentId, id: $serviceId)
-      }
-    `;
-    const result = await fetchGraphQL(query, { environmentId, serviceId });
+    const response = await fetch("https://backboard.railway.app/graphql/v2", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${railwayToken}`,
+      },
+      body: JSON.stringify({
+        query: `
+          mutation delete {
+            serviceDelete(environmentId:"${environmentId}", id:"${serviceId}")
+          }
+        `,
+      }),
+      cache: "no-store",
+    });
+
+    const responseText = await response.text();
+
+    const result = JSON.parse(responseText);
+
     if (result.errors) {
       console.error("GraphQL API Errors:", result.errors);
       return {
@@ -141,6 +161,7 @@ export async function deleteService(
         error: `API Error: ${result.errors[0].message}`,
       };
     }
+
     console.log(`Successfully deleted service ${serviceId}.`);
     return { success: true };
   } catch (error: any) {
@@ -161,16 +182,29 @@ export async function createNewProject(
       error: "Server configuration error: API token missing.",
     };
   }
+
   try {
-    const query = `
-      mutation createProject($input: ProjectCreateInput!) {
-        projectCreate(input: $input) {
-          id
-        }
-      }
-    `;
-    const variables = { input: { name } };
-    const result = await fetchGraphQL(query, variables);
+    const response = await fetch("https://backboard.railway.app/graphql/v2", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${railwayToken}`,
+      },
+      body: JSON.stringify({
+        query: `
+         mutation createProject {
+  projectCreate(input:{name: "${name}"}){
+    id
+  }
+}`,
+      }),
+      cache: "no-store",
+    });
+
+    const responseText = await response.text();
+
+    const result = JSON.parse(responseText);
+
     if (result.errors) {
       console.error("GraphQL API Errors:", result.errors);
       return {
@@ -178,9 +212,83 @@ export async function createNewProject(
         error: `API Error: ${result.errors[0].message}`,
       };
     }
+
     const project: Project = result.data.projectCreate;
-    console.log(`Successfully created project ${project.id}.`);
+
+    console.log(`Successfully created deployment for service ${project.id}.`);
     return { success: true, data: project };
+  } catch (error: any) {
+    console.error(
+      "A critical error occurred in the fetch block:",
+      error.message
+    );
+    return { success: false, error: "An unexpected error occurred." };
+  }
+}
+
+const railwayToken = process.env.RAILWAY_API_TOKEN;
+
+export async function createDeployment(
+  projectId: string,
+  serviceId: string,
+  environmentId: string
+) {
+  const templateId = "89d35db4-3f3d-4317-aa47-ad53ccbbf587";
+  console.log(
+    `Creating deployment for service ${serviceId} in project ${projectId} and environment ${environmentId}.`
+  );
+  if (!railwayToken) {
+    return {
+      success: false,
+      error: "Server configuration error: API token missing.",
+    };
+  }
+  try {
+    const response = await fetch("https://backboard.railway.app/graphql/v2", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${railwayToken}`,
+      },
+      body: JSON.stringify({
+        query: `mutation createDeploymentTrigger {
+      deploymentTriggerCreate(
+        input: {
+          branch: "main"
+          environmentId: "${environmentId}"
+          provider: "railway"
+          repository: "alphasecio/nodejs"
+          serviceId: "${serviceId}"
+          projectId: "${projectId}"
+        }
+      ) {
+        id
+      }
+    }`,
+      }),
+      cache: "no-store",
+    });
+
+    const responseText = await response.text();
+
+    const result = JSON.parse(responseText);
+
+    console.log("response", result);
+
+    if (result.errors) {
+      console.error("GraphQL API Errors:", result.errors);
+      return {
+        success: false,
+        error: `API Error: ${result.errors[0].message}`,
+      };
+    }
+
+    const deployment = result.data.deploymentTriggerCreate;
+
+    console.log(
+      `Successfully created deployment for service ${deployment.service.name}.`
+    );
+    return { success: true, data: deployment };
   } catch (error: any) {
     console.error(
       "A critical error occurred in the fetch block:",
@@ -197,10 +305,18 @@ export async function getProjectById(id: string) {
       error: "Server configuration error: API token missing.",
     };
   }
+
   try {
-    const query = `
-      query getProject($id: String!) {
-        project(id: $id) {
+    const response = await fetch("https://backboard.railway.app/graphql/v2", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${railwayToken}`,
+      },
+      body: JSON.stringify({
+        query: `
+          query getProject {
+        project(id:"${id}") {
           name
           services {
             edges {
@@ -220,8 +336,16 @@ export async function getProjectById(id: string) {
           }
         }
       }
-    `;
-    const result = await fetchGraphQL(query, { id });
+`,
+      }),
+      cache: "no-store",
+    });
+
+    const responseText = await response.text();
+
+    const result = JSON.parse(responseText);
+
+    console.log("result", result);
     if (result.errors) {
       console.error("GraphQL API Errors:", result.errors);
       return {
@@ -229,8 +353,9 @@ export async function getProjectById(id: string) {
         error: `API Error: ${result.errors[0].message}`,
       };
     }
+
     const project: Project = result.data.project;
-    console.log(`Successfully fetched project ${project?.name}.`);
+    console.log(`Successfully fetched ${project} projects.`);
     return { success: true, data: project };
   } catch (error: any) {
     console.error(
@@ -241,34 +366,109 @@ export async function getProjectById(id: string) {
   }
 }
 
+async function getProjectDefaultEnvironmentId(
+  projectId: string,
+  token: string
+): Promise<string | undefined> {
+  const response = await fetch("https://backboard.railway.app/graphql/v2", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      query: `
+        query getProjectEnvironments($projectId: String!) {
+          project(id: $projectId) {
+            environments {
+              edges {
+                node {
+                  id
+                  name
+                }
+              }
+            }
+          }
+        }
+      `,
+      variables: {
+        projectId: projectId,
+      },
+    }),
+    cache: "no-store",
+  });
+
+  const result = await response.json();
+
+  console.log("result", result);
+
+  if (result.errors) {
+    console.error("GraphQL Errors (Get Project Environments):", result.errors);
+    return undefined;
+  }
+
+  const defaultEnv = result.data.project.environments.edges.find(
+    (edge: any) => edge.node.isDefault
+  )?.node.id;
+
+  if (!defaultEnv) {
+    console.warn(
+      `No default environment found for project ${projectId}. You might need to specify one manually.`
+    );
+  }
+  return defaultEnv;
+}
+
 export async function createNewService(
   projectId: string,
   environmentId: string
 ) {
   const templateCode = "Abo1zu";
+
   if (!railwayToken) {
     return {
       success: false,
       error: "Server configuration error: API token missing.",
     };
   }
+
   try {
-    // Get template config
-    const templateQuery = `
-      query getTemplate($code: String!) {
-        template(code: $code) {
-          id
-          name
-          description
-          image
-          category
-          serializedConfig
-        }
+    const templateResponse = await fetch(
+      "https://backboard.railway.app/graphql/v2",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${railwayToken}`,
+        },
+        body: JSON.stringify({
+          query: `
+            query getTemplate($code: String!) {
+              template(code: $code) {
+                id
+                name
+                description
+                image
+                category
+                serializedConfig
+              }
+            }
+          `,
+          variables: {
+            code: templateCode,
+          },
+        }),
+        cache: "no-store",
       }
-    `;
-    const templateResult = await fetchGraphQL(templateQuery, {
-      code: templateCode,
-    });
+    );
+
+    let templateResult = await templateResponse.json();
+
+    console.log(
+      "Template Result Data:",
+      JSON.stringify(templateResult.data, null, 2)
+    );
+
     if (templateResult.errors) {
       console.error("GraphQL Errors (Template Query):", templateResult.errors);
       return {
@@ -278,9 +478,11 @@ export async function createNewService(
           "Failed to fetch template configuration.",
       };
     }
+
     const fetchedSerializedConfig =
       templateResult.data.template.serializedConfig;
     const templateIdForMutation = templateResult.data.template.id;
+
     if (!fetchedSerializedConfig) {
       return {
         success: false,
@@ -293,61 +495,94 @@ export async function createNewService(
         error: "Template ID not found from the template query. Cannot deploy.",
       };
     }
-    // Create service
-    const serviceCreateQuery = `
-      mutation serviceCreate($input: ServiceCreateInput!) {
-        serviceCreate(input: $input) {
-          id
-          name
-          deployments {
-            edges {
-              node {
-                environmentId
-              }
-            }
-          }
-        }
-      }
-    `;
-    const serviceCreateVariables = {
-      input: {
-        projectId,
-        source: { repo: "railwayapp-templates/nodejs" },
-      },
-    };
-    const serviceCreateResult = await fetchGraphQL(
-      serviceCreateQuery,
-      serviceCreateVariables
+
+    console.log(
+      "Fetched Serialized Config:",
+      JSON.stringify(fetchedSerializedConfig, null, 2)
     );
-    if (serviceCreateResult.errors) {
-      console.error(
-        "GraphQL Errors (Service Create):",
-        serviceCreateResult.errors
-      );
-      return {
-        success: false,
-        error:
-          serviceCreateResult.errors[0]?.message || "Failed to create service.",
-      };
-    }
-    // Deploy template
-    const deployQuery = `
-      mutation templateDeployV2($input: TemplateDeployV2Input!) {
-        templateDeployV2(input: $input) {
-          projectId
-          workflowId
+
+    console.log("Template ID for Mutation:", templateIdForMutation);
+
+    console.log(
+      "Fetched Serialized Config:",
+      JSON.stringify(fetchedSerializedConfig, null, 2)
+    );
+
+    console.log("Project ID:", projectId);
+    console.log("Template ID for Mutation:", templateIdForMutation);
+
+    const serviceCreateResponse = await fetch(
+      "https://backboard.railway.app/graphql/v2",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${railwayToken}`,
+        },
+        body: JSON.stringify({
+          query: `
+            mutation serviceCreate {
+  serviceCreate(input:{projectId: "fd05c667-db43-466f-a3be-17777e5b6e8e"
+    source: { repo: "railwayapp-templates/nodejs" }}){
+    id
+    name
+    deployments {
+      edges {
+        node {
+          environmentId
         }
       }
-    `;
-    const deployVariables = {
-      input: {
-        projectId,
-        environmentId,
-        serializedConfig: fetchedSerializedConfig,
-        templateId: templateIdForMutation,
-      },
-    };
-    const deployResult = await fetchGraphQL(deployQuery, deployVariables);
+    }
+  }
+}
+          `,
+          variables: {
+            projectId: projectId,
+          },
+        }),
+        cache: "no-store",
+      }
+    );
+
+    let serviceCreateResult = await serviceCreateResponse.json();
+    console.log(
+      "Service Create Result Data:",
+      JSON.stringify(serviceCreateResult.data, null, 2)
+    );
+
+    const deployResponse = await fetch(
+      "https://backboard.railway.app/graphql/v2",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${railwayToken}`,
+        },
+        body: JSON.stringify({
+          query: `
+            mutation templateDeployV2($input: TemplateDeployV2Input!)
+            {
+              templateDeployV2(input: $input)
+                {projectId
+                workflowId
+            }}
+          `,
+          variables: {
+            input: {
+              projectId: projectId,
+              environmentId: environmentId,
+              serializedConfig: fetchedSerializedConfig,
+              templateId: templateIdForMutation,
+            },
+          },
+        }),
+        cache: "no-store",
+      }
+    );
+
+    let deployResult = await deployResponse.json();
+    console.log("Final Deploy Result:", JSON.stringify(deployResult, null, 2));
+
     if (deployResult.errors) {
       console.error(
         "GraphQL Errors (Deployment Mutation):",
@@ -358,6 +593,7 @@ export async function createNewService(
         error: deployResult.errors[0]?.message || "Failed to deploy template.",
       };
     }
+
     return { success: true, data: deployResult.data.templateDeployV2 };
   } catch (error: any) {
     console.error(
@@ -375,21 +611,34 @@ export async function getAllProjects() {
       error: "Server configuration error: API token missing.",
     };
   }
+
   try {
-    const query = `
-      query GetAllProjects {
+    const response = await fetch("https://backboard.railway.app/graphql/v2", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${railwayToken}`,
+      },
+      body: JSON.stringify({
+        query: `query GetAllProjects {
         projects(first: 100) {
-          edges {
-            node {
+            edges {
+              node {
               id
               name
               description
             }
           }
         }
-      }
-    `;
-    const result = await fetchGraphQL(query);
+      }`,
+      }),
+      cache: "no-store",
+    });
+
+    const responseText = await response.text();
+
+    const result = JSON.parse(responseText);
+
     if (result.errors) {
       console.error("GraphQL API Errors:", result.errors);
       return {
@@ -397,9 +646,11 @@ export async function getAllProjects() {
         error: `API Error: ${result.errors[0].message}`,
       };
     }
+
     const projects: Project[] = result.data.projects.edges.map(
       (edge: any) => edge.node
     );
+
     console.log(`Successfully fetched ${projects.length} projects.`);
     return { success: true, data: projects };
   } catch (error: any) {
